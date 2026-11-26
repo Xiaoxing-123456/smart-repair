@@ -30,18 +30,13 @@ function expectedHeader({ user, password }) {
 }
 
 export function proxy(request) {
-  // REPAIR_ACCESS_MODE=open 时跳过登录（对公开演示开放）；删掉该变量即恢复口令登录。
-  if ((process.env.REPAIR_ACCESS_MODE || "").toLowerCase() === "open") {
+  const list = accounts(process.env);
+
+  // 没有配置任何账号（或显式设置 REPAIR_ACCESS_MODE=open）时，直接放行，公开演示用。
+  // 想恢复登录：配置 REPAIR_ACCESS_PASSWORD 或 REPAIR_ACCOUNTS 后重新部署即可。
+  if ((process.env.REPAIR_ACCESS_MODE || "").toLowerCase() === "open" || list.length === 0) {
     return NextResponse.next();
   }
-
-  const list = accounts(process.env);
-  if (!list.length) {
-    return process.env.VERCEL
-      ? new Response("请在部署环境配置 REPAIR_ACCESS_PASSWORD 或 REPAIR_ACCOUNTS。", { status: 503 })
-      : NextResponse.next();
-  }
-
   const supplied = request.headers.get("authorization") || "";
   if (supplied && list.some((account) => sameHeader(supplied, expectedHeader(account)))) {
     return NextResponse.next();
