@@ -30,6 +30,11 @@ function expectedHeader({ user, password }) {
 }
 
 export function proxy(request) {
+  // REPAIR_ACCESS_MODE=open 时跳过登录（对公开演示开放）；删掉该变量即恢复口令登录。
+  if ((process.env.REPAIR_ACCESS_MODE || "").toLowerCase() === "open") {
+    return NextResponse.next();
+  }
+
   const list = accounts(process.env);
   if (!list.length) {
     return process.env.VERCEL
