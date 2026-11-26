@@ -1,17 +1,44 @@
 import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 
+// 账号来源：
+// 1) REPAIR_ACCESS_PASSWORD → 固定用户名 repair 的老口令（保持兼容）
+// 2) REPAIR_ACCOUNTS → 额外内部账号，格式 "用户名:密码,用户名2:密码2"
+function accounts(env) {
+  const list = [];
+  if (env.REPAIR_ACCESS_PASSWORD) {
+    list.push({ user: "repair", password: env.REPAIR_ACCESS_PASSWORD });
+  }
+  for (const pair of (env.REPAIR_ACCOUNTS || "").split(",")) {
+    const sep = pair.indexOf(":");
+    if (sep < 1) continue;
+    const user = pair.slice(0, sep).trim();
+    const password = pair.slice(sep + 1).trim();
+    if (user && password) list.push({ user, password });
+  }
+  return list;
+}
+
+function sameHeader(supplied, expected) {
+  const a = Buffer.from(supplied);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+function expectedHeader({ user, password }) {
+  return `Basic ${Buffer.from(`${user}:${password}`).toString("base64")}`;
+}
+
 export function proxy(request) {
-  const password = process.env.REPAIR_ACCESS_PASSWORD;
-  if (!password) {
+  const list = accounts(process.env);
+  if (!list.length) {
     return process.env.VERCEL
-      ? new Response("请在部署环境配置 REPAIR_ACCESS_PASSWORD。", { status: 503 })
+      ? new Response("请在部署环境配置 REPAIR_ACCESS_PASSWORD 或 REPAIR_ACCOUNTS。", { status: 503 })
       : NextResponse.next();
   }
 
-  const expected = Buffer.from(`Basic ${Buffer.from(`repair:${password}`).toString("base64")}`);
-  const supplied = Buffer.from(request.headers.get("authorization") || "");
-  if (supplied.length === expected.length && timingSafeEqual(supplied, expected)) {
+  const supplied = request.headers.get("authorization") || "";
+  if (supplied && list.some((account) => sameHeader(supplied, expectedHeader(account)))) {
     return NextResponse.next();
   }
 

@@ -32,6 +32,7 @@ npm run build
 | `DEEPSEEK_API_KEY` | 可选。未配置网关时直连 DeepSeek |
 | `DEEPSEEK_MODEL` | 可选。直连时的模型，默认 `deepseek-flash` |
 | `REPAIR_ACCESS_PASSWORD` | Vercel 部署必填。使用高强度密码，登录用户名为 `repair` |
+| `REPAIR_ACCOUNTS` | 可选。额外内部账号，格式 `用户名:密码,用户名2:密码2`，与 `repair` 账号并存 |
 
 3. 提交一条测试报修，确认 Supabase Table Editor 出现新行。建议区显示「由 DeepSeek 生成」时，表示此次请求成功调用了模型（网关或直连均可）。上游不可用时查看服务器日志中的 `[repair.suggest]`，工单仍可保存，建议标为内置指南。
 
